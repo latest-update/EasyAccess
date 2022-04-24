@@ -18,6 +18,6 @@ class Login
         $user->remember_token = $response['token'];
         $user->save();
 
-        return ShortResponse::json(true, 'User login successfully!', $response, 200);
+        return ShortResponse::json($response, 200);
     }
 }

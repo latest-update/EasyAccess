@@ -13,6 +13,11 @@ use Illuminate\Http\Request;
 
 class GateController extends Controller
 {
+    public function qr_scan(Request $request): JsonResponse
+    {
+        
+    }
+
     public function records (Request $request): JsonResponse
     {
         $records = $request->user()->records();
@@ -21,7 +26,7 @@ class GateController extends Controller
             return $item->summary;
         })->sum();
 
-        return ShortResponse::json(true, 'All records retrieved', $data );
+        return ShortResponse::json($data);
     }
 
     public function interval (Request $request): JsonResponse
@@ -37,7 +42,7 @@ class GateController extends Controller
             return $item->summary;
         })->sum();
 
-        return ShortResponse::json(true, 'All records by interval retrieved', $data);
+        return ShortResponse::json($data);
     }
 
     public function scan (Request $request): JsonResponse
@@ -50,7 +55,7 @@ class GateController extends Controller
         $data = Card::query()->where('serial', $card['serial'])->with(['user:id,card_id,name'])->get()[0];
 
         if($card['token'] != $data['token'])
-            return ShortResponse::json('false', 'Not valid ID card', ['Advice' => 'You should ask for help to WorkCenter or write email@gmail.com']);
+            return ShortResponse::json(['message' => 'Invalid ID card', 'advice' => 'You should ask for help to WorkCenter or write email@gmail.com']);
 
         $user = User::find($data['user']['id']);
 
@@ -62,12 +67,13 @@ class GateController extends Controller
 
     private function entry (User $user): JsonResponse
     {
+        $gate['message'] = 'Entry time has recorded';
         $gate['user_id'] = $user['id'];
         $gate['entry_time'] = now()->format('Y-m-d H:i:s');
 
         Gate::create($gate);
 
-        return ShortResponse::json('true', 'Entry time has recorded', $gate);
+        return ShortResponse::json($gate);
     }
 
     private function exit (User $user): JsonResponse
@@ -85,6 +91,7 @@ class GateController extends Controller
         $record = Record::create($record);
         $gate->delete();
 
-        return ShortResponse::json(true, 'Your time at the work has successfully recorded', $record);
+        $record['message'] = 'Your time at the work has successfully recorded';
+        return ShortResponse::json($record);
     }
 }
