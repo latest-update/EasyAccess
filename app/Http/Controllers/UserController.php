@@ -17,19 +17,19 @@ class UserController extends Controller
     public function users (Request $request): JsonResponse
     {
         if ( $request->user()->tokenCan('role-admin') )
-            return ShortResponse::json(true, 'All users retrieved...', User::all());
+            return ShortResponse::json(User::all());
 
-        return ShortResponse::json(true, 'User information retrieved',  $request->user());
+        return ShortResponse::json($request->user());
     }
 
     public function getSelf (Request $request): JsonResponse
     {
-        return ShortResponse::json(true, 'Information about user has received', $request->user());
+        return ShortResponse::json($request->user());
     }
 
     public function userById (Request $request, User $userid): JsonResponse
     {
-        return ShortResponse::json(true, 'User by id retrieved', $userid);
+        return ShortResponse::json($userid);
     }
 
     public function register (Request $request): JsonResponse
@@ -54,7 +54,7 @@ class UserController extends Controller
         $response['user_data'] = User::create($data);
         $response['card_data'] = $card;
 
-        return ShortResponse::json(true, 'User register successfully!', $response, 201);
+        return ShortResponse::json($response, 201);
     }
 
     public function login (Request $request): JsonResponse
@@ -62,7 +62,7 @@ class UserController extends Controller
         if( Auth::attempt(['email' => $request->email, 'password' => $request->password ]) ){
             return Login::in(Auth::user());
         }
-        return ShortResponse::json(false, 'Not correct email / password', [], 201);
+        return ShortResponse::json([], 201);
     }
 
     public function editRole (Request $request, User $user): JsonResponse
@@ -72,13 +72,13 @@ class UserController extends Controller
         ]);
 
         $user->update($data);
-        return ShortResponse::json(true, 'User role updated', $user);
+        return ShortResponse::json($user);
     }
 
     public function update (Request $request, User $user): JsonResponse
     {
         if( $request->user()->id != $user->id and !$request->user()->tokenCan('role-admin') )
-            return ShortResponse::json(false, 'Not found', [], 403);
+            return ShortResponse::json([], 403);
 
         $data = $request->validate([
             'name' => 'nullable|string|min:2|max:50',
@@ -87,14 +87,14 @@ class UserController extends Controller
         ]);
 
         $user->update($data);
-        return ShortResponse::json(true, 'User updated', $user);
+        return ShortResponse::json($user);
 
     }
 
     public function changePassword (Request $request, User $user): JsonResponse
     {
         if( $request->user()->id != $user->id )
-            return ShortResponse::json(false, 'Not found', [], 403);
+            return ShortResponse::json(null, 403);
 
         $data = $request->validate([
             'old_password' => ['required', Password::min(8)],
@@ -107,15 +107,16 @@ class UserController extends Controller
 
         unset($data['old_password']);
         $user->update($data);
-        return ShortResponse::json(true, 'User password updated', $user);
+        return ShortResponse::json($user);
     }
 
-    public function delete (Request $request, int $id): JsonResponse
+    public function delete (Request $request, User $user): JsonResponse
     {
-        if( $request->user()->id != $id and !$request->user()->tokenCan('ability:role-admin') )
-            return ShortResponse::json(false, 'Not found', [], 403);
+        if( $request->user()->id != $user->id and !$request->user()->tokenCan('ability:role-admin') )
+            return ShortResponse::json(403);
 
-        return ShortResponse::delete(new User(), $id);
+        $user->delete();
+        return ShortResponse::json(['message' => 'User was deleted']);
     }
 
 }

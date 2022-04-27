@@ -2,17 +2,50 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TcQR;
 use App\Http\Controllers\Custom\ShortResponse;
 use App\Models\Card;
 use App\Models\Gate;
 use App\Models\Record;
+use App\Models\Tourniquet;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class GateController extends Controller
 {
+
+    public static function createTtId(Tourniquet $gate): Tourniquet
+    {
+        $gate->ttid = Str::random(15);
+        $gate->save();
+        return $gate;
+    }
+
+    public function qr_scan(Request $request, string $ttid): JsonResponse
+    {
+        $gate = Tourniquet::first();
+        if($gate->ttid != $ttid) {
+            $gate = static::createTtId($gate);
+            event(new TcQR($gate->ttid, null, null, null));
+            return ShortResponse::json(['message' => 'Not valid QR'], 400);
+        }
+
+        $gate = static::createTtId($gate);
+
+        $user = $request->user();
+        if ($user->gate()->get()->isEmpty())
+            $time = $this->entry($user);
+        else
+            $time = $this->exit($user);
+
+        event(new TcQR($gate->ttid, $user->name, $time['entry_time'], isset($time['exit_time']) ? $time['exit_time'] : null));
+
+        return ShortResponse::json(['message' => "Entry time has recorded", 'entry_time' => $time['entry_time'], 'exit_time' => isset($time['exit_time']) ? $time['exit_time'] : null]);
+    }
+
     public function records (Request $request): JsonResponse
     {
         $records = $request->user()->records();
@@ -21,7 +54,7 @@ class GateController extends Controller
             return $item->summary;
         })->sum();
 
-        return ShortResponse::json(true, 'All records retrieved', $data );
+        return ShortResponse::json($data);
     }
 
     public function interval (Request $request): JsonResponse
@@ -37,7 +70,7 @@ class GateController extends Controller
             return $item->summary;
         })->sum();
 
-        return ShortResponse::json(true, 'All records by interval retrieved', $data);
+        return ShortResponse::json($data);
     }
 
     public function scan (Request $request): JsonResponse
@@ -50,27 +83,29 @@ class GateController extends Controller
         $data = Card::query()->where('serial', $card['serial'])->with(['user:id,card_id,name'])->get()[0];
 
         if($card['token'] != $data['token'])
-            return ShortResponse::json('false', 'Not valid ID card', ['Advice' => 'You should ask for help to WorkCenter or write email@gmail.com']);
+            return ShortResponse::json(['message' => 'Invalid ID card', 'advice' => 'You should ask for help to WorkCenter or write email@gmail.com']);
 
         $user = User::find($data['user']['id']);
 
         if ($user->gate()->get()->isEmpty())
-            return $this->entry($user);
+            return ShortResponse::json($this->entry($user));
 
-        return $this->exit($user);
+        return ShortResponse::json($this->exit($user));
     }
 
-    private function entry (User $user): JsonResponse
+    private function entry (User $user): array
     {
+        $gate['message'] = 'Entry time has recorded';
         $gate['user_id'] = $user['id'];
         $gate['entry_time'] = now()->format('Y-m-d H:i:s');
 
         Gate::create($gate);
 
-        return ShortResponse::json('true', 'Entry time has recorded', $gate);
+        $gate['user_name'] = $user['name'];
+        return $gate;
     }
 
-    private function exit (User $user): JsonResponse
+    private function exit (User $user): array
     {
         $gate = $user->gate()->get()[0];
         $record['user_id'] = $user->id;
@@ -85,6 +120,9 @@ class GateController extends Controller
         $record = Record::create($record);
         $gate->delete();
 
-        return ShortResponse::json(true, 'Your time at the work has successfully recorded', $record);
+        unset($record['id']);
+        $record['message'] = 'Your time at the work has successfully recorded';
+        $record['user_name'] = $user['name'];
+        return $record->toArray();
     }
 }

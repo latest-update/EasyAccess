@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Custom\ShortResponse;
 use App\Http\Controllers\GateController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Models\Tourniquet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +25,7 @@ Route::controller(RoleController::class)->group(function () {
     Route::get('/roles/{role:name}', 'usersByRole')->middleware('auth:sanctum', 'abilities:role-admin')->missing(fn() => ShortResponse::json(false, 'Role not found', Role::all()));
     Route::post('/roles/new', 'create')->middleware('auth:sanctum', 'abilities:role-admin');
     Route::patch('/roles/{role}', 'update')->middleware('auth:sanctum', 'abilities:role-admin')->missing(fn() => ShortResponse::json(false, 'Role not found', Role::all()));
-    Route::delete('/roles/{id}', 'delete')->middleware('auth:sanctum', 'abilities:role-admin');
+    Route::delete('/roles/{role}', 'delete')->middleware('auth:sanctum', 'abilities:role-admin');
 });
 
 // User Routing
@@ -36,12 +38,21 @@ Route::controller(UserController::class)->group(function () {
     Route::patch('/users/{user:id}/role', 'editRole')->whereNumber('user')->middleware('auth:sanctum', 'abilities:role-admin')->missing(fn() => ShortResponse::errorMessage('User not found'));
     Route::patch('/users/{user:id}/edit', 'update')->whereNumber('user')->middleware('auth:sanctum')->missing(fn() => ShortResponse::errorMessage('User not found'));
     Route::patch('/users/{user:id}/password', 'changePassword')->whereNumber('user')->middleware('auth:sanctum')->missing(fn() => ShortResponse::errorMessage('User not found'));
-    Route::delete('/users/{id}', 'delete')->whereNumber('id')->middleware('auth:sanctum');
+    Route::delete('/users/{user}', 'delete')->whereNumber('user')->middleware('auth:sanctum');
 });
+
 
 // Gate entry
 Route::controller(GateController::class)->group(function () {
+    Route::get('/getTtid/{key}', function (string $key) {
+        if ($key != Tourniquet::first()->key)
+            return ShortResponse::errorMessage('error');
+
+        return ShortResponse::json(['code' => GateController::createTtId(Tourniquet::first())->ttid]);
+    });
+
     Route::get('/records', 'records')->middleware('auth:sanctum');
+    Route::get('/qr/{ttid}', 'qr_scan')->middleware('auth:sanctum');
     Route::post('/scan', 'scan');
     Route::post('/records/interval', 'interval')->middleware('auth:sanctum');
 });
