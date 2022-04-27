@@ -1,5 +1,6 @@
 <?php
 
+use App\Events\TcQR;
 use App\Http\Controllers\Custom\ShortResponse;
 use App\Http\Controllers\GateController;
 use App\Http\Controllers\RoleController;
@@ -48,7 +49,10 @@ Route::controller(GateController::class)->group(function () {
         if ($key != Tourniquet::first()->key)
             return ShortResponse::errorMessage('error');
 
-        return ShortResponse::json(['code' => GateController::createTtId(Tourniquet::first())->ttid]);
+        $gate = GateController::createTtId(Tourniquet::first());
+        event(new TcQR($gate->ttid, null, null, null));
+
+        return ShortResponse::json(['code' => $gate->ttid]);
     });
 
     Route::get('/records', 'records')->middleware('auth:sanctum');
