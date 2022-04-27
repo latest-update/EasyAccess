@@ -15,8 +15,9 @@ class CreateTourniquetsTable extends Migration
     {
         Schema::create('tourniquets', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
-            $table->string('ttid', '64')->unique();
+            $table->string('name');
+            $table->string('ttid');
+            $table->string('key');
         });
     }
 

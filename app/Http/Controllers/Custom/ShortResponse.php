@@ -14,21 +14,6 @@ class ShortResponse
         return response()->json($data, $statusCode);
     }
 
-    public static function delete(Model $model, int $id) : JsonResponse
-    {
-        $row = $model::find($id);
-        $modelName = AssumeClass::getClassName($model);
-        if ($row)
-        {
-            $row->delete($id);
-            return self::json(null);
-        }
-        else
-        {
-            return self::json(null, 404);
-        }
-    }
-
     public static function errorMessage (string $error) : JsonResponse
     {
         return response()->json([
