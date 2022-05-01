@@ -28,7 +28,6 @@ class GateController extends Controller
     {
         $gate = Tourniquet::first();
         if($gate->ttid != $ttid) {
-            $gate = static::createTtId($gate);
             event(new TcQR($gate->ttid, null, null, null));
             return ShortResponse::json(['message' => 'Not valid QR'], 400);
         }
@@ -43,7 +42,7 @@ class GateController extends Controller
 
         event(new TcQR($gate->ttid, $user->name, $time['entry_time'], isset($time['exit_time']) ? $time['exit_time'] : null));
 
-        return ShortResponse::json(['message' => "Entry time has recorded", 'entry_time' => $time['entry_time'], 'exit_time' => isset($time['exit_time']) ? $time['exit_time'] : null]);
+        return ShortResponse::json(['message' => "Time has recorded", 'entry_time' => $time['entry_time'], 'exit_time' => isset($time['exit_time']) ? $time['exit_time'] : null]);
     }
 
     public function records (Request $request): JsonResponse
